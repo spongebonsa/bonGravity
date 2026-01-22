@@ -1,0 +1,50 @@
+Project Defense / Viva Voce Preparation Guide
+This guide is designed to prepare you for questions a teacher might ask about your BON Gravity (CANS) e-commerce project. As a 3rd-year student, you are expected to understand why you made certain decisions, not just how the code works.
+
+1. Security & Authentication
+Q: "How did you secure user passwords?"
+Explanation: Never store plain text passwords. Using md5 or sha1 is outdated and insecure. Your Answer: "I used PHP's password_hash() function with the PASSWORD_DEFAULT algorithm (currently Bcrypt). This creates a secure, salted hash. When a user logs in, I verify the input using password_verify(). This ensures that even if the database is compromised, the actual passwords remain safe."
+
+Q: "How are you preventing SQL Injection?"
+Explanation: SQL Injection is the most common web vulnerability where attackers manipulate SQL queries. Your Answer: "I used PDO (PHP Data Objects) with Prepared Statements throughout the application. Instead of concatenating user input directly into query strings (which is dangerous), I use placeholders (like ?) and pass the actual values separately in the execute() method. The database driver ensures the input is treated as data, not executable code."
+
+Q: "How do you handle user sessions?"
+Explanation: Teachers want to know how you maintain state (login status, cart) across pages. Your Answer: "I use PHP's built-in $_SESSION mechanism. When a user logs in, session_start() is called, and I store their user_id and role in the session array. On restricted pages (like 
+my-account.php
+), I check if these session variables exist. If not, I redirect the user to the login page."
+
+2. Database Design
+Q: "Explain your database normalization. Why separate orders and user_items?"
+Explanation: This tests your understanding of database relationships (1-to-N, N-to-N). Your Answer: "I used a relational database structure.
+
+Users & Orders: A 1-to-Many relationship (One User has Many Orders).
+Orders & Products: A Many-to-Many relationship, which is why I created a pivot table called order_items. This table links order_id and product_id and stores the snapshot of the price at the time of purchase, ensuring that price changes in the future don't affect historical order records."
+Q: "What happens to the cart if a user isn't logged in?"
+Explanation: Handling "guest" vs "logged-in" states is a classic e-commerce problem. Your Answer: "The cart is primarily stored in the $_SESSION['cart'] array to allow guest users to shop. This array maps Product IDs to quantities. If a user logs in, I have logic to sync this session data to the cart_items database table, ensuring their cart persists across different devices."
+
+3. Architecture & Code Structure
+Q: "Is your code MVC? How is it structured?"
+Explanation: Even if you didn't use a framework like Laravel, you should demonstrate organization. Your Answer: "While I didn't use a strict framework, I followed the Separation of Concerns principle:
+
+Database connection is isolated in 
+includes/db.php
+.
+Logic handlers (like adding to cart, wishlist actions) are separated into the api/ directory.
+Reusable UI components (header, footer) are in includes/.
+Pages (shop.php, product.php) handle the presentation logic. This makes the code modular and easier to maintain."
+Q: "How did you implement the Contact Form?"
+Explanation: They might check if you just copied code or understand the flow. Your Answer: "The contact form accepts user input and sanitizes it using htmlspecialchars() to prevent XSS (Cross-Site Scripting). It then uses a prepared INSERT statement to save the message into the enquiries table. I also implemented flash messages (stored in session) to give immediate feedback ('Message Sent') to the user after submission."
+
+4. Frontend & User Experience
+Q: "Is the specific design responsive? How did you handle mobile devices?"
+Explanation: Modern web apps must work on phones. Your Answer: "Yes, I used CSS Flexbox and Grid layouts. The design uses relative units (like 
+rem
+ and %) and I can add @media queries if needed to adjust column counts (e.g., changing the product grid from 3 columns to 1 column on mobile screens)."
+
+5. Future Improvements
+Q: "If you had more time, what would you add?"
+Explanation: This shows you understand the limitations of your current MVP (Minimum Viable Product). Your Answer:
+
+Forgot Password via Email: Currently, users can only change passwords if logged in. I would integrate a mail server (like PHPMailer) to send reset tokens.
+Payment Gateway Integration: Currently, checkout is simulated. I would integrate Stripe or PayPal APIs for real payments.
+Admin Dashboard Analytics: Adding charts to visualize sales trends over time using a library like Chart.js.

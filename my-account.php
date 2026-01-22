@@ -15,6 +15,36 @@ $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
+// Handle Order Cancellation
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['cancel_order'])) {
+    $order_id = intval($_POST['order_id']);
+    
+    // Verify the order belongs to the user and can be cancelled
+    $stmt = $pdo->prepare("SELECT * FROM orders WHERE id = ? AND user_id = ?");
+    $stmt->execute([$order_id, $user_id]);
+    $order = $stmt->fetch();
+    
+    if ($order) {
+        // Define which statuses can be cancelled (pending, processing, etc.)
+        $cancellable_statuses = ['pending', 'processing'];
+        
+        if (in_array($order['status'], $cancellable_statuses)) {
+            // Update order status to cancelled (remove updated_at since column doesn't exist)
+            $update_stmt = $pdo->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?");
+            if ($update_stmt->execute([$order_id])) {
+                $_SESSION['success_message'] = "Order #{$order['order_number']} has been cancelled successfully.";
+                redirect('my-account.php?view=orders');
+            } else {
+                $_SESSION['error_message'] = "Failed to cancel order. Please try again.";
+            }
+        } else {
+            $_SESSION['error_message'] = "This order cannot be cancelled because it's already {$order['status']}.";
+        }
+    } else {
+        $_SESSION['error_message'] = "Order not found or you don't have permission to cancel it.";
+    }
+}
+
 // Fetch Orders
 $stmt = $pdo->prepare("SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC");
 $stmt->execute([$user_id]);
@@ -186,21 +216,91 @@ $orders = $stmt->fetchAll();
         <?php elseif ($view == 'orders'): ?>
             <h2 style="margin-bottom: 2rem;">My Orders</h2>
             
+            <?php 
+            // Display success/error messages
+            if (isset($_SESSION['success_message'])) {
+                echo '<div class="alert alert-success">' . $_SESSION['success_message'] . '</div>';
+                unset($_SESSION['success_message']);
+            }
+            if (isset($_SESSION['error_message'])) {
+                echo '<div class="alert alert-danger">' . $_SESSION['error_message'] . '</div>';
+                unset($_SESSION['error_message']);
+            }
+            ?>
+            
             <?php if (count($orders) > 0): ?>
                 <div style="background: white; border-radius: 16px; overflow: hidden;">
-                    <?php foreach ($orders as $order): ?>
+                    <?php foreach ($orders as $order): 
+                        // Define which statuses can be cancelled - based on your orders.php statuses
+                        $cancellable = in_array($order['status'], ['pending', 'processing']);
+                        $status_color = '';
+                        
+                        // Set color based on status
+                        switch ($order['status']) {
+                            case 'pending':
+                                $status_color = '#FEF9C3'; // yellow
+                                break;
+                            case 'processing':
+                                $status_color = '#DBEAFE'; // blue
+                                break;
+                            case 'delivered':
+                                $status_color = '#DCFCE7'; // green
+                                break;
+                            case 'cancelled':
+                                $status_color = '#FEE2E2'; // red
+                                break;
+                            case 'shipped':
+                                $status_color = '#E0E7FF'; // indigo
+                                break;
+                            default:
+                                $status_color = '#F3F4F6'; // gray
+                        }
+                    ?>
                         <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-light);">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
+                                <div style="flex: 1;">
                                     <div style="font-weight: 700; margin-bottom: 0.25rem;">Order #<?php echo sanitize($order['order_number']); ?></div>
-                                    <div style="color: var(--text-muted); font-size: 0.9rem;"><?php echo date('M d, Y', strtotime($order['created_at'])); ?></div>
+                                    <div style="color: var(--text-muted); font-size: 0.9rem;">
+                                        <?php echo date('M d, Y', strtotime($order['created_at'])); ?>
+                                        <!-- Removed updated_at since column doesn't exist -->
+                                    </div>
                                 </div>
-                                <div style="text-align: right;">
+                                <div style="text-align: right; margin-right: 1rem;">
                                     <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem;"><?php echo format_price($order['total']); ?></div>
-                                    <span style="padding: 0.25rem 0.75rem; border-radius: 50px; font-size: 0.85rem; font-weight: 600; background: #FEF9C3; color: #854D0E;">
+                                    <span style="padding: 0.25rem 0.75rem; border-radius: 50px; font-size: 0.85rem; font-weight: 600; background: <?php echo $status_color; ?>; color: #333;">
                                         <?php echo ucfirst(sanitize($order['status'])); ?>
                                     </span>
                                 </div>
+                                <div>
+                                    <?php if ($cancellable): ?>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-danger" 
+                                                style="font-size: 0.8rem; padding: 0.3rem 0.8rem;"
+                                                onclick="showCancelModal(<?php echo $order['id']; ?>, '<?php echo $order['order_number']; ?>')">
+                                            Cancel Order
+                                        </button>
+                                    <?php elseif ($order['status'] == 'cancelled'): ?>
+                                        <span style="color: #dc2626; font-size: 0.85rem;">Cancelled</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            
+                            <!-- Order Details -->
+                            <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+                                <div>Shipping: <?php echo sanitize($order['shipping_method'] ?? 'Standard'); ?></div>
+                                <div>Payment: <?php echo ucfirst(sanitize($order['payment_method'] ?? 'Not specified')); ?></div>
+                            </div>
+                            
+                            <!-- Cancel Order Modal -->
+                            <div id="cancelModal-<?php echo $order['id']; ?>" 
+                                 style="display: none; margin-top: 1rem; padding: 1rem; background: #FEF2F2; border-radius: 8px; border: 1px solid #FCA5A5;">
+                                <h4 style="color: #991B1B; margin-bottom: 0.5rem;">Cancel Order #<?php echo $order['order_number']; ?></h4>
+                                <p style="color: #7F1D1D; margin-bottom: 1rem;">Are you sure you want to cancel this order? This action cannot be undone.</p>
+                                <form method="POST" action="" style="display: flex; gap: 10px;">
+                                    <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
+                                    <button type="submit" name="cancel_order" class="btn btn-danger btn-sm">Yes, Cancel Order</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="hideCancelModal(<?php echo $order['id']; ?>)">No, Keep Order</button>
+                                </form>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -213,6 +313,45 @@ $orders = $stmt->fetchAll();
                     <a href="shop.php" class="btn btn-primary">Start Shopping</a>
                 </div>
             <?php endif; ?>
+            
+            <script>
+            function showCancelModal(orderId, orderNumber) {
+                // Hide all other modals first
+                document.querySelectorAll('[id^="cancelModal-"]').forEach(modal => {
+                    modal.style.display = 'none';
+                });
+                
+                // Show the selected modal
+                const modal = document.getElementById('cancelModal-' + orderId);
+                if (modal) {
+                    modal.style.display = 'block';
+                    
+                    // Scroll to the modal
+                    modal.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+            
+            function hideCancelModal(orderId) {
+                const modal = document.getElementById('cancelModal-' + orderId);
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            }
+            
+            // Close modal when clicking outside
+            document.addEventListener('click', function(event) {
+                if (event.target.classList.contains('btn-outline-danger')) {
+                    return;
+                }
+                
+                const modals = document.querySelectorAll('[id^="cancelModal-"]');
+                modals.forEach(modal => {
+                    if (!modal.contains(event.target) && modal.style.display === 'block') {
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+            </script>
             
         <?php else: ?>
             <h2 style="margin-bottom: 2rem;">Wishlist</h2>
@@ -276,10 +415,8 @@ $orders = $stmt->fetchAll();
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // Remove the product card from the page
                         button.closest('.product-card').remove();
                         
-                        // Check if wishlist is now empty
                         const grid = document.querySelector('.product-grid');
                         if (grid && grid.children.length === 0) {
                             location.reload();
