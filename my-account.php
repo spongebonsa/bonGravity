@@ -1,4 +1,5 @@
 <?php
+require_once 'auth_check.php';
 define('PAGE_TITLE', 'My Account');
 require_once 'includes/header.php';
 
@@ -49,13 +50,13 @@ $orders = $stmt->fetchAll();
     <div class="account-content">
         <?php if ($view == 'profile'): ?>
             <?php
-            // Handle profile update
+            // Handle profile update and account deletion
             $edit_mode = isset($_GET['edit']) && $_GET['edit'] == '1';
             $update_success = false;
-            
+
             if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
                 $new_name = sanitize($_POST['full_name']);
-                
+
                 if (!empty($new_name)) {
                     $stmt = $pdo->prepare("UPDATE users SET full_name = ? WHERE id = ?");
                     if ($stmt->execute([$new_name, $user_id])) {
@@ -67,6 +68,18 @@ $orders = $stmt->fetchAll();
                         $edit_mode = false;
                     }
                 }
+            }
+
+            // Handle account deletion (user-initiated)
+            if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_account'])) {
+                // Remove user (wishlist will cascade; orders.user_id is set to NULL per schema)
+                $del = $pdo->prepare("DELETE FROM users WHERE id = ?");
+                $del->execute([$user_id]);
+
+                // Log out and redirect to homepage
+                session_unset();
+                session_destroy();
+                redirect('index.php');
             }
             ?>
             
@@ -96,14 +109,7 @@ $orders = $stmt->fetchAll();
                             <div class="info-value"><?php echo sanitize($user['email']); ?></div>
                             <small style="color: var(--text-muted); font-size: 0.85rem;">Email cannot be changed</small>
                         </div>
-                        <div class="info-group">
-                            <div class="info-label">Phone</div>
-                            <div class="info-value">-</div>
-                        </div>
-                        <div class="info-group">
-                            <div class="info-label">Address</div>
-                            <div class="info-value">-</div>
-                        </div>
+                        <!-- Phone and Address removed per request -->
                     </div>
                     <button type="submit" name="update_profile" class="btn btn-primary" style="margin-top: 1.5rem;">💾 Save Changes</button>
                 </form>
@@ -118,14 +124,7 @@ $orders = $stmt->fetchAll();
                         <div class="info-label">Email</div>
                         <div class="info-value"><?php echo sanitize($user['email']); ?></div>
                     </div>
-                    <div class="info-group">
-                        <div class="info-label">Phone</div>
-                        <div class="info-value">-</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Address</div>
-                        <div class="info-value">-</div>
-                    </div>
+                    <!-- Phone and Address removed from view -->
                 </div>
             <?php endif; ?>
 
@@ -172,6 +171,15 @@ $orders = $stmt->fetchAll();
                         <input type="password" name="confirm_password" class="form-control" required>
                     </div>
                     <button type="submit" name="update_password" class="btn btn-secondary">Update Password</button>
+                </form>
+            </div>
+
+            <!-- Delete Account -->
+            <div style="margin-top: 2rem; border-top: 1px solid var(--border-light); padding-top: 1.5rem;">
+                <h3 style="margin-bottom: 1rem; color: #b91c1c;">Delete Account</h3>
+                <p style="color: var(--text-muted);">Deleting your account will remove your user record and related wishlist entries. Orders will remain but will no longer be associated with your account. This action is irreversible.</p>
+                <form method="POST" onsubmit="return confirm('Are you sure you want to permanently delete your account? This cannot be undone.');">
+                    <button type="submit" name="delete_account" class="btn btn-danger">Delete My Account</button>
                 </form>
             </div>
             

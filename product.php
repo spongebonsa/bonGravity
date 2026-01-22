@@ -7,6 +7,42 @@ $stmt = $pdo->prepare("SELECT p.*, c.name as category_name FROM products p LEFT 
 $stmt->execute([$id]);
 $product = $stmt->fetch();
 
+// Detect if `reviews` table exists (used before handling POST to avoid fatal errors)
+$has_reviews = false;
+try {
+    $chk = $pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'reviews'");
+    $chk->execute([DB_NAME]);
+    $has_reviews = $chk->fetchColumn() > 0;
+} catch (Exception $e) {
+    $has_reviews = false;
+}
+// Handle review submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_review'])) {
+    if (!isset($_SESSION['user_id'])) {
+        set_flash_message('Please login to submit a review', 'danger');
+        redirect('login.php');
+    }
+
+    $rating = (int)($_POST['rating'] ?? 0);
+    $review_text = sanitize($_POST['review'] ?? '');
+
+    if ($rating < 1 || $rating > 5 || empty($review_text)) {
+        set_flash_message('Please provide a valid rating (1-5) and a review message.', 'danger');
+        redirect('product.php?id=' . $id);
+    }
+
+    if (!$has_reviews) {
+        // Reviews are not available on this installation — avoid setting a persistent flash
+        // and silently redirect so users don't see the message across other pages.
+        redirect('product.php?id=' . $id);
+    }
+
+    $ins = $pdo->prepare('INSERT INTO reviews (product_id, user_id, rating, review) VALUES (?, ?, ?, ?)');
+    $ins->execute([$id, $_SESSION['user_id'], $rating, $review_text]);
+    set_flash_message('Thank you for your review!', 'success');
+    redirect('product.php?id=' . $id);
+}
+
 if (!$product) {
     echo "<div class='container' style='padding: 4rem;'><p>Product not found.</p></div>";
     require_once 'includes/footer.php';
@@ -17,6 +53,24 @@ if (!$product) {
 $related_stmt = $pdo->prepare("SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.category_id = ? AND p.id != ? AND p.status = 'active' LIMIT 3");
 $related_stmt->execute([$product['category_id'], $product['id']]);
 $related_products = $related_stmt->fetchAll();
+
+// Fetch reviews for this product (if reviews table exists)
+if ($has_reviews) {
+    $reviews_stmt = $pdo->prepare("SELECT r.*, u.full_name FROM reviews r LEFT JOIN users u ON r.user_id = u.id WHERE r.product_id = ? ORDER BY r.created_at DESC");
+    $reviews_stmt->execute([$id]);
+    $reviews = $reviews_stmt->fetchAll();
+
+    // Compute average rating for display
+    $avg_stmt = $pdo->prepare("SELECT IFNULL(ROUND(AVG(rating),2),0) as avg_rating, COUNT(*) as review_count FROM reviews WHERE product_id = ?");
+    $avg_stmt->execute([$id]);
+    $avg_data = $avg_stmt->fetch();
+    $avg_rating = $avg_data ? (float)$avg_data['avg_rating'] : 0;
+    $review_count = $avg_data ? (int)$avg_data['review_count'] : 0;
+} else {
+    $reviews = [];
+    $avg_rating = 0;
+    $review_count = 0;
+}
 ?>
 
 <!-- Breadcrumb -->
@@ -85,7 +139,17 @@ $related_products = $related_stmt->fetchAll();
 
                 </div>
 
-                <div class="product-detail-price"><?php echo format_price($product['price']); ?></div>
+                <div class="product-detail-price"><?php echo format_product_price($product['price'], $product['currency'] ?? null); ?></div>
+                <div style="margin-top:8px; color:#FFB02E; font-size:0.95rem;">
+                    <?php for ($s=1;$s<=5;$s++): ?>
+                        <?php if ($avg_rating >= $s-0.25): ?>
+                            <span>★</span>
+                        <?php else: ?>
+                            <span style="color:#E5E7EB">★</span>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+                    <span style="color:#64748B; font-size:0.9rem; margin-left:8px;"><?php echo $avg_rating; ?> (<?php echo $review_count; ?>)</span>
+                </div>
 
                 <p class="product-description"><?php echo nl2br(sanitize($product['description'])); ?></p>
 
@@ -140,6 +204,124 @@ $related_products = $related_stmt->fetchAll();
                         <div class="feature-text">Easy Returns<br><small style="color: var(--text-muted);">30-day policy</small></div>
                     </div>
                 </div>
+
+                <!-- Reviews Section -->
+                <div style="margin-top: 2.5rem;">
+                    <h3>Customer Reviews</h3>
+                    <?php if ($has_reviews && count($reviews) > 0): ?>
+                        <div id="reviews-list" style="margin-top:1rem;">
+                            <?php foreach ($reviews as $rv): ?>
+                                <div class="review-item" style="padding:0.75rem 0; border-bottom:1px solid #f1f5f9;">
+                                    <div style="font-weight:700"><?php echo sanitize($rv['full_name'] ?: 'Anonymous'); ?></div>
+                                    <div style="color:#FFB02E;">
+                                        <?php for ($s=1;$s<=5;$s++): ?>
+                                            <?php echo $rv['rating'] >= $s ? '★' : '<span style="color:#E5E7EB">★</span>'; ?>
+                                        <?php endfor; ?>
+                                    </div>
+                                    <div style="color:#374151; margin-top:6px;" class="review-text"><?php echo nl2br(sanitize($rv['review'])); ?></div>
+                                    <div style="color:#9CA3AF; font-size:0.85rem; margin-top:6px;" class="review-date"><?php echo date('M d, Y H:i', strtotime($rv['created_at'])); ?></div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div id="reviews-list"><p style="color:var(--text-muted); margin-top:0.5rem;">No reviews yet — be the first to review!</p></div>
+                    <?php endif; ?>
+
+                    <?php if ($has_reviews): ?>
+                        <?php if (isset($_SESSION['user_id'])): ?>
+                            <form method="POST" style="margin-top:1.25rem; max-width:600px;">
+                            <h4>Write a review</h4>
+                            <div class="form-group">
+                                <label class="form-label">Rating</label>
+                                <select name="rating" class="form-control" required>
+                                    <option value="5">5 - Excellent</option>
+                                    <option value="4">4 - Very good</option>
+                                    <option value="3">3 - Good</option>
+                                    <option value="2">2 - Fair</option>
+                                    <option value="1">1 - Poor</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Your review</label>
+                                <textarea name="review" class="form-control" rows="4" required></textarea>
+                            </div>
+                            <div style="margin-top:0.75rem;">
+                                <button type="submit" name="submit_review" class="btn btn-primary">Submit Review</button>
+                            </div>
+                        </form>
+                            <script>
+                            (function(){
+                                const form = document.getElementById('review-form');
+                                const submitBtn = document.getElementById('submit-review');
+                                form.addEventListener('submit', function(e){
+                                    e.preventDefault();
+                                    submitBtn.disabled = true;
+                                    const rating = document.getElementById('rating').value;
+                                    const review = document.getElementById('review-text').value;
+
+                                    fetch('<?php echo APP_URL; ?>/api/review_actions.php', {
+                                        method: 'POST',
+                                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                                        body: 'product_id=<?php echo $product['id']; ?>&rating='+encodeURIComponent(rating)+'&review='+encodeURIComponent(review)
+                                    })
+                                    .then(r => r.json())
+                                    .then(data => {
+                                        submitBtn.disabled = false;
+                                        if (data.success && data.review) {
+                                            // Append new review to list
+                                            const list = document.getElementById('reviews-list');
+                                            const div = document.createElement('div');
+                                            div.className = 'review-item';
+                                            div.style.padding = '0.75rem 0';
+                                            div.style.borderBottom = '1px solid #f1f5f9';
+                                            const name = document.createElement('div');
+                                            name.style.fontWeight = '700';
+                                            name.textContent = data.review.full_name || 'You';
+                                            const stars = document.createElement('div');
+                                            stars.style.color = '#FFB02E';
+                                            for (let s=1;s<=5;s++) stars.innerHTML += (data.review.rating >= s) ? '★' : '<span style="color:#E5E7EB">★</span>';
+                                            const text = document.createElement('div');
+                                            text.style.color = '#374151';
+                                            text.style.marginTop = '6px';
+                                            text.innerHTML = (data.review.review || '').replace(/\n/g, '<br>');
+                                            const date = document.createElement('div');
+                                            date.style.color = '#9CA3AF';
+                                            date.style.fontSize = '0.85rem';
+                                            date.style.marginTop = '6px';
+                                            date.textContent = (new Date()).toLocaleString();
+
+                                            div.appendChild(name);
+                                            div.appendChild(stars);
+                                            div.appendChild(text);
+                                            div.appendChild(date);
+
+                                            // If placeholder 'No reviews yet' exists, replace content
+                                            if (list.children.length === 1 && list.children[0].tagName === 'P') {
+                                                list.innerHTML = '';
+                                            }
+                                            list.insertBefore(div, list.firstChild);
+                                            // Clear form
+                                            document.getElementById('review-text').value = '';
+                                            document.getElementById('rating').value = '5';
+                                        } else {
+                                            alert(data.message || 'Failed to submit review');
+                                        }
+                                    })
+                                    .catch(err => {
+                                        submitBtn.disabled = false;
+                                        console.error(err);
+                                        alert('An error occurred. Please try again.');
+                                    });
+                                });
+                            })();
+                            </script>
+                        <?php else: ?>
+                            <p style="margin-top:0.75rem;">Please <a href="login.php">login</a> to write a review.</p>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <p style="margin-top:0.75rem; color: var(--text-muted);">Reviews are currently unavailable.</p>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
@@ -164,7 +346,7 @@ $related_products = $related_stmt->fetchAll();
                         <div class="product-info">
                             <span class="product-category"><?php echo ucfirst(sanitize($related['category_name'])); ?></span>
                             <h3><?php echo sanitize($related['name']); ?></h3>
-                            <span class="product-price"><?php echo format_price($related['price']); ?></span>
+                            <span class="product-price"><?php echo format_price($related['price'], $related['currency'] ?? null); ?></span>
                         </div>
                     </a>
                 </div>

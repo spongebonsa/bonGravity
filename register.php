@@ -40,26 +40,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p class="text-center mb-4" style="color: var(--text-light);">Join the BON community</p>
         
         <form method="POST">
+            <!-- name field moved to top per request -->
             <div class="form-group">
-                <label class="form-label">Full Name</label>
+                <label class="form-label">Name</label>
                 <input type="text" name="name" class="form-control" required>
             </div>
-            
+
             <div class="form-group">
                 <label class="form-label">Email Address</label>
                 <input type="email" name="email" class="form-control" required>
             </div>
-            
+
             <div class="form-group">
                 <label class="form-label">Password</label>
                 <input type="password" name="password" class="form-control" required>
             </div>
-            
+
             <div class="form-group">
                 <label class="form-label">Confirm Password</label>
                 <input type="password" name="confirm_password" class="form-control" required>
             </div>
-            
+
             <button type="submit" class="btn btn-primary" style="width: 100%;">Register</button>
         </form>
         

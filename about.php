@@ -7,7 +7,7 @@ require_once 'includes/header.php';
 <section class="hero">
     <div class="container">
         <h1>Our Story</h1>
-        <p>We believe in refreshment without compromise. Tasty as bon BON - beverages made with pure ingredients, zero sugar, and first-natural and organic artificial sweeteners.</p>
+        <p>We believe in refreshment without compromise. Tasty as bon BON - soft-drink made with pure ingredients, zero sugar, and first-natural and organic artificial sweeteners.</p>
     </div>
 </section>
 
@@ -18,7 +18,7 @@ require_once 'includes/header.php';
             <div>
                 <div class="label" style="color: var(--primary-blue); font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem;">OUR MISSION</div>
                 <h2 style="font-size: 2.5rem; margin-bottom: 1rem;">Better For You,<br><span style="color: var(--primary-blue);">Better For Tomorrow</span></h2>
-                <p style="color: var(--text-muted); margin-bottom: 1rem;">We're on a mission to change the beverage industry. No more drinks full of sugar and artificial sweeteners and additives. Just clean, functional ingredients that actually do what they say.</p>
+                <p style="color: var(--text-muted); margin-bottom: 1rem;">We're on a mission to change the soft-drink industry. No more drinks full of sugar and artificial sweeteners and additives. Just clean, functional ingredients that actually do what they say.</p>
                 <p style="color: var(--text-muted);">Our promise is simple: transparent ingredients, real benefits, and a commitment to sustainability. We believe you shouldn't have to choose between what tastes good and what's good for you.</p>
             </div>
             <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
@@ -63,12 +63,12 @@ require_once 'includes/header.php';
             <div class="card">
                 <div class="card-icon">🚫</div>
                 <h3>No Compromise</h3>
-                <p>We never cut corners. Our beverages are crafted without any added sugars, artificial sweeteners, or hidden ingredients. What you see is what you get.</p>
+                <p>We never cut corners. Our soft-drinks are crafted without any added sugars, artificial sweeteners, or hidden ingredients. What you see is what you get.</p>
             </div>
             <div class="card">
                 <div class="card-icon">🤝</div>
                 <h3>Community First</h3>
-                <p>We're more than a beverage company. We're a community of people who care about their health, the planet, and each other. Join the movement.</p>
+                <p>We're more than a soft-drink company. We're a community of people who care about their health, the planet, and each other. Join the movement.</p>
             </div>
         </div>
     </div>

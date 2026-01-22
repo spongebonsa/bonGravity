@@ -4,16 +4,32 @@ require_once 'includes/header.php';
 
 // Get filter parameters
 $search_query = isset($_GET['search']) ? sanitize($_GET['search']) : '';
-$min_price = isset($_GET['min_price']) ? (float)$_GET['min_price'] : 0;
-$max_price = isset($_GET['max_price']) ? (float)$_GET['max_price'] : 100;
+$min_price = isset($_GET['min_price']) ? (float)$_GET['min_price'] : null;
+$max_price = isset($_GET['max_price']) ? (float)$_GET['max_price'] : null;
 $categories = isset($_GET['categories']) ? $_GET['categories'] : [];
 $sort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
 
 // Build SQL query with JOIN to categories table
-$sql = "SELECT p.*, c.name as category_name 
+$has_reviews = false;
+try {
+    $chk = $pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'reviews'");
+    $chk->execute([DB_NAME]);
+    $has_reviews = $chk->fetchColumn() > 0;
+} catch (Exception $e) {
+    $has_reviews = false;
+}
+
+if ($has_reviews) {
+    $sql = "SELECT p.*, c.name as category_name,
+        (SELECT IFNULL(ROUND(AVG(r.rating),2),0) FROM reviews r WHERE r.product_id = p.id) as avg_rating,
+        (SELECT COUNT(*) FROM reviews r WHERE r.product_id = p.id) as review_count
         FROM products p 
         LEFT JOIN categories c ON p.category_id = c.id 
         WHERE p.status = 'active'";
+} else {
+    // Fallback query when reviews table is missing
+    $sql = "SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.status = 'active'";
+}
 $params = [];
 
 // Apply search filter
@@ -23,10 +39,15 @@ if (!empty($search_query)) {
     $params[] = "%$search_query%";
 }
 
-// Apply price filter
-$sql .= " AND p.price BETWEEN ? AND ?";
-$params[] = $min_price;
-$params[] = $max_price;
+// Apply price filter only when user provided values
+if ($min_price !== null || $max_price !== null) {
+    // Provide defaults if one side is missing
+    $min = $min_price !== null ? $min_price : 0;
+    $max = $max_price !== null ? $max_price : 9999999;
+    $sql .= " AND p.price BETWEEN ? AND ?";
+    $params[] = $min;
+    $params[] = $max;
+}
 
 // Apply category filter
 if (!empty($categories) && is_array($categories)) {
@@ -173,7 +194,18 @@ function toggleView(view) {
                                 <div class="product-info">
                                     <span class="product-category"><?php echo ucfirst(sanitize($product['category_name'])); ?></span>
                                     <h3><?php echo sanitize($product['name']); ?></h3>
-                                    <span class="product-price"><?php echo format_price($product['price']); ?></span>
+                                    <span class="product-price"><?php echo format_product_price($product['price'], $product['currency'] ?? null); ?></span>
+                                    <div class="product-rating" style="margin-top:6px; font-size:0.95rem; color:#FFB02E;">
+                                        <?php $ar = isset($product['avg_rating']) ? (float)$product['avg_rating'] : 0; $rc = $product['review_count'] ?? 0; ?>
+                                        <?php for ($s=1;$s<=5;$s++): ?>
+                                            <?php if ($ar >= $s-0.25): ?>
+                                                <span>★</span>
+                                            <?php else: ?>
+                                                <span style="color:#E5E7EB">★</span>
+                                            <?php endif; ?>
+                                        <?php endfor; ?>
+                                        <span style="color:#64748B; font-size:0.85rem; margin-left:6px;">(<?php echo $rc; ?>)</span>
+                                    </div>
                                 </div>
                             </a>
                         </div>

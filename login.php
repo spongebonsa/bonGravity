@@ -22,7 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         set_flash_message("Welcome back, " . $user['full_name']);
         
-        if ($user['role'] === 'admin') {
+        if ($user['role'] === 'superadmin') {
+            redirect('admin/superadmin.php');
+        } elseif ($user['role'] === 'admin') {
             redirect('admin/index.php');
         } else {
             redirect('my-account.php');
@@ -55,7 +57,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="text-center mt-2" style="margin-top: 1.5rem;">
             <p>Don't have an account? <a href="register.php" style="color: var(--primary-color); font-weight: 600;">Register here</a></p>
         </div>
+        
+        <div class="text-center mt-2" style="margin-top: 1.5rem;">
+            <p><a href="forgot_password.php" style="color: var(--primary-color); font-weight: 600;">Forgot your password?</a></p>
+        </div>
     </div>
 </div>
 
 <?php require_once 'includes/footer.php'; ?>
+<script>
+// Prevent navigating back into protected pages after logout.
+// Push a new state and trap popstate so Back stays on (or returns to) the login page.
+try {
+    history.replaceState(null, null, location.href);
+    history.pushState(null, null, location.href);
+    window.addEventListener('popstate', function () {
+        // When user presses Back, force a replace to the login URL so protected pages are not shown.
+        location.replace('<?php echo APP_URL; ?>/login.php');
+    });
+} catch (e) {
+    // ignore if history API not available
+}
+</script>
