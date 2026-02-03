@@ -57,7 +57,7 @@ $grand_total = $total + $shipping;
                         </div>
                         <div class="cart-item-details">
                             <h3><?php echo sanitize($item['name']); ?></h3>
-                            <div class="price"><?php echo format_price($item['price']); ?></div>
+                            <div class="price"><?php echo format_product_price($item['price'], $item['currency'] ?? null); ?></div>
                             <div class="quantity-controls">
                                 <form action="api/cart_actions.php" method="POST" style="display: inline;">
                                     <input type="hidden" name="action" value="decrease">
@@ -73,7 +73,7 @@ $grand_total = $total + $shipping;
                             </div>
                         </div>
                         <div style="margin-left: auto; text-align: right;">
-                            <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem;"><?php echo format_price($item['subtotal']); ?></div>
+                            <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem;"><?php echo format_product_price($item['subtotal'], $item['currency'] ?? null); ?></div>
                             <form action="api/cart_actions.php" method="POST">
                                 <input type="hidden" name="action" value="remove">
                                 <input type="hidden" name="product_id" value="<?php echo $item['id']; ?>">

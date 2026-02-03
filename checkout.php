@@ -1,4 +1,5 @@
 <?php
+require_once 'auth_check.php';
 define('PAGE_TITLE', 'Checkout');
 require_once 'includes/header.php';
 

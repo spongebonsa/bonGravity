@@ -76,9 +76,9 @@ require_once 'includes/header.php';
             <h2 style="color: var(--primary-blue); margin-bottom: 1rem;">11. Contact Information</h2>
             <p>If you have any questions about these Terms & Conditions, please contact us:</p>
             <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
-                <li>Email: hello@bon.com</li>
-                <li>Phone: +1 (555) 123-4567</li>
-                <li>Address: 123 Beverage Street, Los Angeles, CA 90001</li>
+                <li>Email: admin@bon.com</li>
+                <li>Phone: +251 9-00-00-00--00</li>
+                <li>Address: Addis Ababa, awaro , hhcu</li>
             </ul>
         </section>
 

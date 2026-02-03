@@ -58,7 +58,7 @@ require_once 'includes/header.php';
         <div class="category-grid">
             <div class="category-card orange-gradient">
                 <div class="category-icon">🏃</div>
-                <h3>Sporting Goods</h3>
+                <h3>Sparkling Water</h3>
                 <p>Get fit and stay active</p>
                 <a href="shop.php?category=sporting" class="category-link">Shop Now →</a>
             </div>
@@ -66,28 +66,28 @@ require_once 'includes/header.php';
             <div class="category-card green-gradient">
                 <div class="category-icon">🌸</div>
                 <h3>Fresh Flowers</h3>
-                <p>Beautiful blooms delivered</p>
+                <p>pure alpine water with natural bubbles</p>
                 <a href="shop.php?category=flowers" class="category-link">Shop Now →</a>
             </div>
             
             <div class="category-card blue-gradient">
                 <div class="category-icon">💼</div>
-                <h3>Gym Bag</h3>
-                <p>Carry your essentials</p>
+                <h3>Fruit flavor</h3>
+                <p>Refreshing fruit-infused drinks</p>
                 <a href="shop.php?category=gym" class="category-link">Shop Now →</a>
             </div>
             
             <div class="category-card purple-gradient">
                 <div class="category-icon">🛒</div>
-                <h3>Grocery Boost</h3>
-                <p>Fresh groceries daily</p>
+                <h3>Iced Tea</h3>
+                <p>natural sparkling iced teas</p>
                 <a href="shop.php?category=grocery" class="category-link">Shop Now →</a>
             </div>
             
             <div class="category-card yellow-gradient">
                 <div class="category-icon">🍊</div>
-                <h3>Healthy Bites</h3>
-                <p>Nutritious snacks</p>
+                <h3>Energy drink</h3>
+                <p>Natural energy drink without the crash</p>
                 <a href="shop.php?category=healthy" class="category-link">Shop Now →</a>
             </div>
         </div>
@@ -126,7 +126,7 @@ require_once 'includes/header.php';
                             <div class="product-info">
                                 <p class="product-category"><?php echo strtoupper(sanitize($product['category_name'])); ?></p>
                                 <h3><?php echo sanitize($product['name']); ?></h3>
-                                <p class="product-price"><?php echo format_price($product['sale_price'] ?: $product['price']); ?></p>
+                                <p class="product-price"><?php echo format_product_price($product['sale_price'] ?: $product['price'], $product['currency'] ?? null); ?></p>
                             </div>
                         </a>
                     </div>
@@ -203,6 +203,53 @@ require_once 'includes/header.php';
                 </div>
             </div>
         </div>
+    </div>
+</section>
+
+<!-- Recent Reviews -->
+<section class="reviews-section">
+    <div class="container">
+        <div class="section-header">
+            <h2>Recent Reviews</h2>
+            <p>Latest feedback from our customers</p>
+        </div>
+        <?php
+        // Safely fetch recent reviews only if the `reviews` table exists to avoid fatal PDOException
+        $recent_reviews = [];
+        $has_reviews = false;
+        try {
+            $dbname = $pdo->query("SELECT DATABASE()")->fetchColumn();
+            $check = $pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'reviews'");
+            $check->execute([$dbname]);
+            $has_reviews = $check->fetchColumn() > 0;
+            if ($has_reviews) {
+                $rev_stmt = $pdo->query("SELECT r.*, p.name as product_name, u.full_name FROM reviews r LEFT JOIN products p ON r.product_id = p.id LEFT JOIN users u ON r.user_id = u.id ORDER BY r.created_at DESC LIMIT 6");
+                $recent_reviews = $rev_stmt->fetchAll();
+            }
+        } catch (Exception $e) {
+            // If information_schema is inaccessible or query fails, fall back to no reviews.
+            $recent_reviews = [];
+            $has_reviews = false;
+        }
+        ?>
+        <?php if ($has_reviews && count($recent_reviews) > 0): ?>
+        <div class="review-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap:1rem; margin-top:1rem;">
+            <?php if (count($recent_reviews) > 0): ?>
+                <?php foreach ($recent_reviews as $rv): ?>
+                    <div class="card">
+                        <div style="font-weight:700; margin-bottom:0.25rem;"><?php echo sanitize($rv['full_name'] ?: 'Anonymous'); ?> <small style="color:#64748B; font-weight:600;">on <?php echo sanitize($rv['product_name']); ?></small></div>
+                        <div style="color:#FFB02E; margin-bottom:0.5rem;">
+                            <?php for ($s=1;$s<=5;$s++): ?>
+                                <?php echo $rv['rating'] >= $s ? '★' : '<span style="color:#E5E7EB">★</span>'; ?>
+                            <?php endfor; ?>
+                        </div>
+                        <div style="color:#374151; font-size:0.95rem; margin-bottom:0.5rem;"><?php echo nl2br(sanitize($rv['review'])); ?></div>
+                        <div style="color:#9CA3AF; font-size:0.8rem;"><?php echo date('M d, Y', strtotime($rv['created_at'])); ?></div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
     </div>
 </section>
 

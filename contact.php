@@ -34,19 +34,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="icon">📧</div>
                 <h4>Email Us</h4>
                 <p>We'll respond within 24 hours</p>
-                <a href="mailto:hello@bon.com">hello@bon.com</a>
+                <a href="mailto:hello@bon.com">admin@bon.com</a>
             </div>
             <div class="contact-card">
                 <div class="icon">📞</div>
                 <h4>Call Us</h4>
                 <p>Mon-Fri 9am to 5pm</p>
-                <a href="tel:+15551234567">+1 (555) 123-4567</a>
+                <a href="tel:+15551234567">+251 9-00-00-00-00</a>
             </div>
             <div class="contact-card">
                 <div class="icon">📍</div>
                 <h4>Visit Us</h4>
-                <p>123 Beverage Street</p>
-                <p>Los Angeles, CA 90001</p>
+                <p>Ambo,awaro,hhcu</p>
+                <p>Ethiopia</p>
             </div>
         </div>
 
@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="faq">
                     <div class="faq-item">
                         <h4>Where do you ship?</h4>
-                        <p>We currently ship to all 50 US states and select international locations. Check our shipping page for details.</p>
+                        <p>We currently ship all accross ETHIOPIA states and select international locations. Check our shipping page for details.</p>
                     </div>
                     <div class="faq-item">
                         <h4>What is your return policy?</h4>
@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div class="faq-item">
                         <h4>Are your products really sugar-free?</h4>
-                        <p>Yes! We use zero sugar and zero artificial sweeteners. Our beverages get their natural fruit taste.</p>
+                        <p>Yes! We use zero sugar and zero artificial sweeteners. Our Soft-drink get their natural fruit taste.</p>
                     </div>
                     <div class="faq-item">
                         <h4>How should I store my BON?</h4>
